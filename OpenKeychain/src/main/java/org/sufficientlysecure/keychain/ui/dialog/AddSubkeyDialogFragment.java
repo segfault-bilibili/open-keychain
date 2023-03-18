@@ -165,9 +165,9 @@ public class AddSubkeyDialogFragment extends DialogFragment {
             TwoLineArrayAdapter adapter = new TwoLineArrayAdapter(context,
                     android.R.layout.simple_spinner_item, choices);
             mKeyTypeSpinner.setAdapter(adapter);
-            // make RSA 3072 the default
+            // make EDDSA the default
             for (int i = 0; i < choices.size(); ++i) {
-                if (choices.get(i).getId() == SupportedKeyType.RSA_3072) {
+                if (choices.get(i).getId() == SupportedKeyType.EDDSA) {
                     mKeyTypeSpinner.setSelection(i);
                     break;
                 }
@@ -197,19 +197,18 @@ public class AddSubkeyDialogFragment extends DialogFragment {
                     mUsageNone.setChecked(true);
                 }
 
-                if (keyType == SupportedKeyType.ECC_P521 || keyType == SupportedKeyType.ECC_P256) {
-                    mUsageSignAndEncrypt.setEnabled(false);
-                    if (mWillBeMasterKey) {
-                        mUsageEncrypt.setEnabled(false);
-                    }
-                } else if (keyType == SupportedKeyType.EDDSA) {
-                    mUsageSignAndEncrypt.setEnabled(false);
-                    mUsageEncrypt.setEnabled(false);
-                } else {
-                    // need to enable if previously disabled for ECC masterkey
-                    mUsageEncrypt.setEnabled(true);
-                    mUsageSignAndEncrypt.setEnabled(true);
+                boolean signAndEncryptAvailable = true;
+                boolean encryptAvailable = true;
+                switch (keyType) {
+                    case ECC_P256:
+                    case ECC_P521:
+                    case EDDSA:
+                        signAndEncryptAvailable = false;
+                        if (mWillBeMasterKey) encryptAvailable = false;
+                        break;
                 }
+                mUsageSignAndEncrypt.setEnabled(signAndEncryptAvailable);
+                mUsageEncrypt.setEnabled(encryptAvailable);
             }
 
             @Override
@@ -262,6 +261,10 @@ public class AddSubkeyDialogFragment extends DialogFragment {
                             curve = Curve.NIST_P521;
                             break;
                         }
+                        case EDDSA: {
+                            curve = Curve.CV25519;
+                            break;
+                        }
                     }
 
                     // set algorithm
@@ -283,7 +286,11 @@ public class AddSubkeyDialogFragment extends DialogFragment {
                             break;
                         }
                         case EDDSA: {
-                            algorithm = Algorithm.EDDSA;
+                            if(mUsageEncrypt.isChecked()) {
+                                algorithm = Algorithm.ECDH;
+                            } else {
+                                algorithm = Algorithm.EDDSA;
+                            }
                         }
                     }
 
